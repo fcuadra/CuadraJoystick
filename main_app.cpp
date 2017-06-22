@@ -1,3 +1,13 @@
+/*
+ * before compile visit:
+	http://wiki.ros.org/joy/Tutorials/ConfiguringALinuxJoystick
+ * 	this has to be done before using this code:
+ * 	sudo apt-get install joystick
+ *  sudo jstest /dev/input/js0
+ *  ls -l /dev/input/js0
+ *  sudo chmod a+rw /dev/input/js0
+ *
+ */
 
 #include "drivers/cursor/cursorClass.h"
 #include "hal/joystick/joystickClass.h"
