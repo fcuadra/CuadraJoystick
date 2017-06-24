@@ -13,6 +13,12 @@
 #include "hal/joystick/joystickClass.h"
 #include <time.h>
 #include <pigpio.h>
+#include <sys/socket.h>
+#include <bluetooth/bluetooth.h>
+#include <bluetooth/rfcomm.h>
+#include <stdio.h>
+#include <unistd.h>
+
 
 #define GPIOIZQ 26
 #define GPIODER 19
@@ -27,11 +33,13 @@ JoystickClass *js;
 int xtemp=100, ytemp=100;
 
 void InitializeMotor(void);
+void Bluetooth();
+
 
 int main()
 {
 	unsigned int filter=0, xprevInc=0, yprevInc=0;
-	unsigned char xbuttonprev=0,squarebuttonprev=0, startbuttonprev=0;
+	unsigned char xbuttonprev=0,squarebuttonprev=0, startbuttonprev=0, trianglebuttonprev=0;
 	MousePtr=new cursorClass();
 	js=new JoystickClass();
 	InitializeMotor();
@@ -70,6 +78,15 @@ int main()
 					MousePtr->Click();
 				}
 				startbuttonprev=jsread.value;
+			}
+			else if(jsread.number== TRIANGLE_BUTTON)
+			{
+				if(jsread.value==1 && trianglebuttonprev==0)
+				{
+					printf("button triangle pressed\nBluetooth\n");
+					Bluetooth();
+				}
+				trianglebuttonprev=jsread.value;
 			}
 			else if(jsread.number== SELECT_BUTTON && jsread.value==1)
 			{
@@ -150,4 +167,77 @@ void InitializeMotor(void)
 	gpioSetPWMrange(GPIODER,32767);
 	gpioPWM(GPIOIZQ,0);
 	gpioPWM(GPIODER,0);
+}
+
+
+void Bluetooth()
+{
+	bdaddr_t my_bdaddress={0};
+	struct sockaddr_rc loc_addr = { 0 }, rem_addr = { 0 };
+	char buf[1024] = { 0 };
+	int s, client, bytes_read;
+	socklen_t opt = sizeof(rem_addr);
+
+	// allocate socket
+	s = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
+
+	// bind socket to port 1 of the first available
+	// local bluetooth adapter
+	loc_addr.rc_family = AF_BLUETOOTH;
+	//loc_addr.rc_bdaddr = *BDADDR_ANY;
+	loc_addr.rc_bdaddr = my_bdaddress;
+	loc_addr.rc_channel = (uint8_t) 1;
+	bind(s, (struct sockaddr *)&loc_addr, sizeof(loc_addr));
+
+	// put socket into listening mode
+	listen(s, 1);
+
+	// accept one connection
+	client = accept(s, (struct sockaddr *)&rem_addr, &opt);
+
+	ba2str( &rem_addr.rc_bdaddr, buf );
+	fprintf(stderr, "accepted connection from %s\n", buf);
+	memset(buf, 0, sizeof(buf));
+
+	// read data from the client
+	while (!strstr(buf,"R"))
+	{
+		bytes_read = read(client, buf, sizeof(buf));
+		if( bytes_read > 0 ) {
+			printf("[%s]\n", buf);
+			if(strchr(buf,'1'))
+			{
+				ytemp=ytemp-10;
+				if(ytemp<0){ytemp=0;}
+				if(ytemp>MousePtr->maxheight){ytemp=MousePtr->maxheight;}
+				MousePtr->MoveCursor(xtemp,ytemp);
+			}
+			if(strchr(buf,'2'))
+			{
+				xtemp=xtemp+10;
+				if(xtemp<0){xtemp=0;}
+				if(xtemp>MousePtr->maxwidth){xtemp=MousePtr->maxwidth;}
+				MousePtr->MoveCursor(xtemp,ytemp);
+			}
+			if(strchr(buf,'3'))
+			{
+				ytemp=ytemp+10;
+				if(ytemp<0){ytemp=0;}
+				if(ytemp>MousePtr->maxheight){ytemp=MousePtr->maxheight;}
+				MousePtr->MoveCursor(xtemp,ytemp);
+			}
+			if(strchr(buf,'4'))
+			{
+				xtemp=xtemp-10;
+				if(xtemp<0){xtemp=0;}
+				if(xtemp>MousePtr->maxwidth){xtemp=MousePtr->maxwidth;}
+				MousePtr->MoveCursor(xtemp,ytemp);
+			}
+		}
+
+
+	}
+	// close connection
+	close(client);
+	close(s);
 }

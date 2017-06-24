@@ -17,7 +17,7 @@ asm:
 	as -o GPIOClass.o GPIOClass.s
 	as -o joystickClass.o joystickClass.s
 linker:
-	g++ -lX11 -lpigpio -lrt -lpthread -Wall -o Joystick.exe main_app.o cursorClass.o GPIOClass.o joystickClass.o
+	g++ -lX11 -lpigpio -lrt -lpthread -Wall -lbluetooth -o Joystick.exe main_app.o cursorClass.o GPIOClass.o joystickClass.o
 run:
 	./Joystick.exe
 clean:
